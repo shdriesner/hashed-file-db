@@ -16,6 +16,10 @@ function get-timestamp() {
     stat "$1" | grep ^Modify | cut -f2- -d: | sed -e 's/ /-/g;s/:/-/g;s/^-//;' | cut -f1 -d.
 }
 
+function get-size() {
+    stat "$1" | grep Size: | cut -f2- -d: | awk '{print $1}'
+}
+
 # check for adequate arguments
 [ 2 == $# ] || usage
 
@@ -61,6 +65,7 @@ done
 wait
 
 # now convert file names to dated file names
+SIZE=0
 for t in "${types[@]}"
 do
     # skip empty files
@@ -69,6 +74,7 @@ do
     names=()
     while read f
     do
+        SIZE=$((${SIZE}+$(get-size "${f}")))
         ts=$(get-timestamp "${f}")
         yr=$(echo ${ts} | cut -f1 -d-)
         mn=$(echo ${ts} | cut -f2 -d-)
@@ -77,5 +83,6 @@ do
     done < "${DST}/${t}-files.txt"
 done
 
+echo "SIZE=${SIZE} bytes"
 # give me contents of ${DST}
 #ls -trl "${DST}"
