@@ -20,6 +20,11 @@ function get-size() {
     stat "$1" | grep Size: | cut -f2- -d: | awk '{print $1}'
 }
 
+function get-sha256() {
+    s=$(sha256sum "$1" 2>/dev/null | awk '{print $1}')
+    echo ${s:0:6}
+}
+
 # check for adequate arguments
 [ 2 == $# ] || usage
 
@@ -34,23 +39,24 @@ do
 done
 
 # file types to look for
-types=(
-    jpg
-    jpeg
-#    mov
+declare -A types=(
+    [jpg]=Pictures/jpg
+    [jpeg]=Pictures/jpg
+    [mov]=Movies/mov
 #    wav
-#    cr2
-#    mp3
-#    mp4
+    [cr2]=Movies/cr2
+#    [mp3]=Music/mp3
+    [mp4]=Movies/mp4
+    [m4v]=Movies/m4v
 #    png
 #    doc
 #    docx
-    xls
-    xlsx
+#    xls
+#    xlsx
 #    odt
 #    odp
 #    ods
-#    pdf
+    [pdf]=Documents/pdf
 #    ppt
 #    pptx
 #    zip
@@ -58,31 +64,35 @@ types=(
 )
 
 # get each file type and write to txt files
-for t in "${types[@]}"
+for t in "${!types[@]}"
 do
-    get-files-by-type "${t}" "${SRC}" > "${DST}/${t}-files.txt" &
+    [ -e "${t}-files.txt" ] && continue
+    get-files-by-type "${t}" "${SRC}" > "${t}-files.txt" &
 done
 wait
 
 # now convert file names to dated file names
 SIZE=0
-for t in "${types[@]}"
+echo '#!/bin/bash'
+for l in *-files.txt
 do
     # skip empty files
-    [ -z "${DST}/${t}-files.txt" ] && continue
-    # get file names
-    names=()
+    [ -z "${l}" ] && continue
+    # type is [type]-files.txt
+    t=$(echo ${l} | cut -f1 -d-)
     while read f
     do
         SIZE=$((${SIZE}+$(get-size "${f}")))
+        sha=$(get-sha256 "${f}")
         ts=$(get-timestamp "${f}")
         yr=$(echo ${ts} | cut -f1 -d-)
         mn=$(echo ${ts} | cut -f2 -d-)
-        bn=${DST}/${t}/${yr}/${mn}/${ts}-$(basename "${f}")
+        bn=${DST}/${types[${t}]}/${yr}/${mn}/${ts}-${sha}-$(basename "${f}")
         echo install -Dcv \"${f}\" \"${bn}\"
-    done < "${DST}/${t}-files.txt"
+#        install -Dcv \"${f}\" \"${bn}\"
+    done < "${l}"
 done
 
-echo "SIZE=${SIZE} bytes"
+#echo "SIZE=${SIZE} bytes"
 # give me contents of ${DST}
 #ls -trl "${DST}"
