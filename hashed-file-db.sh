@@ -13,11 +13,11 @@ function get-files-by-type() {
 }
 
 function get-timestamp() {
-    stat "$1" | grep ^Modify | cut -f2- -d: | sed -e 's/ /-/g;s/:/-/g;s/^-//;' | cut -f1 -d.
+    stat "$1" 2>/dev/null | grep ^Modify | cut -f2- -d: | sed -e 's/ /-/g;s/:/-/g;s/^-//;' | cut -f1 -d.
 }
 
 function get-size() {
-    stat "$1" | grep Size: | cut -f2- -d: | awk '{print $1}'
+    stat "$1" 2>/dev/null | grep Size: | cut -f2- -d: | awk '{print $1}'
 }
 
 function get-sha256() {
@@ -80,7 +80,7 @@ do
     [ -z "${l}" ] && continue
     # type is [type]-files.txt
     t=$(echo ${l} | cut -f1 -d-)
-    while read f
+    while IFS= read -r f
     do
         SIZE=$((${SIZE}+$(get-size "${f}")))
         sha=$(get-sha256 "${f}")
@@ -88,8 +88,8 @@ do
         yr=$(echo ${ts} | cut -f1 -d-)
         mn=$(echo ${ts} | cut -f2 -d-)
         bn=${DST}/${types[${t}]}/${yr}/${mn}/${ts}-${sha}-$(basename "${f}")
-        echo install -Dcv \"${f}\" \"${bn}\"
-#        install -Dcv \"${f}\" \"${bn}\"
+        echo install -DCv \"${f}\" \"${bn}\"
+#        install -DCv \"${f}\" \"${bn}\"
     done < "${l}"
 done
 
