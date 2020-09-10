@@ -5,13 +5,6 @@ function usage() {
     echo "Usage: $(basename ${BASH_SOURCE[0]}) [SRC] [DST]" && exit 1
 }
 
-function get-files-by-type() {
-    local t=$1; shift
-    local s=$1; shift
-    find "${s}" -iname "*.${t}" -type f 2>/dev/null
-#    find "${s}" -iname "*.${t}" -type f 2>/dev/null | sed -e "s:^\(.*\)$:\'\1\':"
-}
-
 function get-timestamp() {
     stat "$1" 2>/dev/null | grep ^Modify | cut -f2- -d: | sed -e 's/ /-/g;s/:/-/g;s/^-//;' | cut -f1 -d.
 }
@@ -43,37 +36,43 @@ declare -A types=(
     [jpg]=Pictures/jpg
     [jpeg]=Pictures/jpg
     [mov]=Movies/mov
-#    wav
+    [wav]=Music/wav
     [cr2]=Movies/cr2
-#    [mp3]=Music/mp3
+    [ogg]=Music/ogg
+    [mp3]=Music/mp3
     [mp4]=Movies/mp4
     [m4v]=Movies/m4v
-#    png
-#    doc
-#    docx
-#    xls
-#    xlsx
-#    odt
-#    odp
-#    ods
+    [png]=Pictures/png
+    [t02]=Documents/t02
+    [doc]=Documents/doc
+    [docx]=Documents/doc
+    [xls]=Documents/xls
+    [xlsx]=Documents/xls
+    [ppt]=Documents/ppt
+    [pptx]=Documents/ppt
+    [odt]=Documents/odt
+    [ods]=Documents/ods
+    [odp]=Documents/odp
     [pdf]=Documents/pdf
-#    ppt
-#    pptx
-#    zip
-#    iso
+    [zip]=Archives/zip
+    [iso]=Images/iso
+    [tar.bz2]=Images/tarballs
+    [tar.gz]=Images/tarballs
+    [tar.xz]=Images/tarballs
+    [tgz]=Images/tarballs
 )
 
 # get each file type and write to txt files
 for t in "${!types[@]}"
 do
-    [ -e "${t}-files.txt" ] && continue
-    get-files-by-type "${t}" "${SRC}" > "${t}-files.txt" &
+    { echo "Searching for *.${t} files in ${SRC} ..." && \
+	  find "${SRC}" -iname "*.${t}" -type f 2>/dev/null > "${t}-files.txt"; } &
 done
 wait
 
 # now convert file names to dated file names
 SIZE=0
-echo '#!/bin/bash'
+#echo '#!/bin/bash'
 for l in *-files.txt
 do
     # skip empty files
@@ -87,9 +86,12 @@ do
         ts=$(get-timestamp "${f}")
         yr=$(echo ${ts} | cut -f1 -d-)
         mn=$(echo ${ts} | cut -f2 -d-)
-        bn=${DST}/${types[${t}]}/${yr}/${mn}/${ts}-${sha}-$(basename "${f}")
-        echo install -DCv \"${f}\" \"${bn}\"
-#        install -DCv \"${f}\" \"${bn}\"
+        bn=${DST}/${types[${t}]}/${yr}/${mn}/${ts}-${sha}-$(basename -a "${f}")
+	# if this is a renamed rename, trim out the double rename
+	bn="$(echo "${bn}" | sed -e "s:\(/${ts}-${sha}-\)${ts}-${sha}-:\1:")"
+#        echo install -DCv \"${f}\" \"${bn}\"
+#        install -DCv "${f}" "${bn}"
+        [ -e "${bn}" ] && echo "${bn} already installed" || install -Dv "${f}" "${bn}"
     done < "${l}"
 done
 
